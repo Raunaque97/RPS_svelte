@@ -1,8 +1,15 @@
 interface IAgent<GameState> {
   // returns the new states after the move
   getNextState(
-    gameState: GameState
-  ): Promise<{ newPubState: PubState; newPvtStateHash: PvtStateHash }>;
+    gameState: GameState,
+    prevProof?: any,
+    prevpublicSignals?: any
+  ): Promise<{
+    newPubState: PubState;
+    newPvtStateHash: PvtStateHash;
+    proof: any; // TODO: define this type
+    publicSignals: any; // TODO: redundant, as can be extracted from PubState or vice versa
+  }>;
 }
 
 interface IGameLogic<GameState> {
@@ -12,7 +19,6 @@ interface IGameLogic<GameState> {
 
 enum GameEngineStatus {
   WaitingForResponse,
-  WaitingForProofGeneration,
   WaitingForProofVerification,
   NotRunning,
   Running,

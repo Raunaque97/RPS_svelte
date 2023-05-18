@@ -9,7 +9,7 @@ export default class NetworkedAgent implements IAgent<GameState> {
     this.conn = conn;
 
     conn.on("data", (msg) => {
-      console.log("NetworkedAgent: data received: " + msg);
+      // console.log("NetworkedAgent: data received: " + msg);
       if (this.onMsgReceive) {
         this.onMsgReceive(JSON.parse(msg.toString()));
       } else {
@@ -19,8 +19,15 @@ export default class NetworkedAgent implements IAgent<GameState> {
   }
 
   public async getNextState(
-    gameState: GameState
-  ): Promise<{ newPubState: PubState; newPvtStateHash: PvtStateHash }> {
+    gameState: GameState,
+    prevProof,
+    prevPublicSignals
+  ): Promise<{
+    newPubState: PubState;
+    newPvtStateHash: PvtStateHash;
+    proof: any;
+    publicSignals;
+  }> {
     // extract PubState from gameState
     let agentId = gameState.step % 2;
     let pubState = { ...gameState };
@@ -33,6 +40,8 @@ export default class NetworkedAgent implements IAgent<GameState> {
       JSON.stringify({
         pubState: pubState,
         pvtStateHash: opponentPvtStateHash,
+        proof: prevProof,
+        publicSignals: prevPublicSignals,
       })
     );
 
@@ -42,6 +51,8 @@ export default class NetworkedAgent implements IAgent<GameState> {
         resolve({
           newPubState: msg.pubState,
           newPvtStateHash: msg.pvtStateHash,
+          proof: msg.proof,
+          publicSignals: msg.publicSignals,
         });
       };
     });

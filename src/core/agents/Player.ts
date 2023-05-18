@@ -5,28 +5,42 @@ import type {
   PubState,
   PvtState,
 } from "../types";
+import { snarkjs } from "../snark";
 
 export default class Player implements IAgent<GameState> {
   private onMoveSelected: ((move: 0 | 1 | 2) => void) | undefined;
-  private privateState: PvtState;
+  private privateState: PvtState = undefined;
+  private pvtStateHash: PvtStateHash = 0;
 
   constructor() {}
 
-  public async getNextState(
-    gameState: GameState
-  ): Promise<{ newPubState: PubState; newPvtStateHash: PvtStateHash }> {
+  public async getNextState(gameState: GameState): Promise<{
+    newPubState: PubState;
+    newPvtStateHash: PvtStateHash;
+    proof: any;
+    publicSignals;
+  }> {
     return new Promise((resolve) => {
-      this.onMoveSelected = (move: 0 | 1 | 2) => {
+      this.onMoveSelected = async (move: 0 | 1 | 2) => {
         this.onMoveSelected = undefined;
 
-        // extract PubState from gameState
+        // extract PubState from gameState & deep copy
         let pubState = { ...gameState };
         delete pubState.pvtStateHash;
-        let agentId = gameState.step % 2;
+        pubState = JSON.parse(JSON.stringify(pubState));
 
+        let agentId = gameState.step % 2;
+        // save a deep copy of the previous private state
+        // needed for proof generation
+        let prevPvtState = this.privateState
+          ? JSON.parse(JSON.stringify(this.privateState))
+          : undefined;
+
+        //////////////////////////////////////////
+        // GAME LOGIC
         if (agentId === 0) {
           // 0's turn
-          if (this.privateState) {
+          if (gameState.step > 0) {
             // update healths
             let diff = (3 + this.privateState.move - gameState.B_move) % 3;
             if (diff === 1) {
@@ -38,17 +52,74 @@ export default class Player implements IAgent<GameState> {
             }
           }
           this.privateState = { move: move };
-          resolve({
-            newPubState: pubState,
-            newPvtStateHash: calcStateHash(this.privateState),
-          });
         } else {
           // 1's turn
           pubState.B_move = move;
+        }
+
+        //////////////////////////////////////////
+        // construct proof of correct transition
+        let zkCircuitName, inputs;
+        let pvtState = {};
+        for (let key in this.privateState) {
+          pvtState["P" + agentId + "_" + key] = this.privateState[key];
+        }
+        if (gameState.step === 0) {
+          zkCircuitName = "init";
+          inputs = { ...pubState, ...pvtState };
+        } else {
+          zkCircuitName = agentId === 0 ? "moveA" : "moveB";
+          // construct prevStates
+          let prevStates = {};
+          for (let key in pubState) {
+            prevStates[key + "_prev"] = gameState[key];
+          }
+          for (let key in prevPvtState) {
+            prevStates["P" + agentId + "_" + key + "_prev"] = prevPvtState[key];
+          }
+          // @ts-ignore
+          prevStates.step_prev = gameState.step - 1; // Super hacky, as gameEngine is updating the 'step'
+
+          inputs = {
+            ...prevStates,
+            ...pubState,
+            ...pvtState,
+            hash_prev: this.pvtStateHash,
+          };
+        }
+        try {
+          console.log(`generating proof for ${zkCircuitName}`, { inputs });
+          let time = performance.now();
+          let { proof, publicSignals } = await snarkjs.groth16.fullProve(
+            inputs,
+            zkCircuitName + ".wasm",
+            zkCircuitName + ".zkey"
+          );
+          this.pvtStateHash = publicSignals[0]; // as circuit has only one output
+          time = performance.now() - time;
+          console.log(
+            `%c proofGeneration took ${(time / 1000).toFixed(5)} sec`,
+            "color: blue; font-size: 15px;"
+          );
+          // console.log(
+          //   `%c generated proof:`,
+          //   "color: aqua; font-size: 15px;",
+          //   { proof },
+          //   { publicSignals }
+          // );
+
           resolve({
             newPubState: pubState,
-            newPvtStateHash: 0, // 1 don't have private state
+            newPvtStateHash: agentId === 0 ? this.pvtStateHash : 0,
+            proof: proof,
+            publicSignals: publicSignals,
           });
+        } catch (error) {
+          console.warn(
+            "%cproof generation failed!!!",
+            "color: red; font-size: 20px;",
+            error
+          );
         }
       };
     });
@@ -61,9 +132,4 @@ export default class Player implements IAgent<GameState> {
       console.error("onMoveSelected is undefined !! not agent's turn");
     }
   }
-}
-function calcStateHash(privateState: PvtState): number {
-  // for now xor value with a random number
-  // TODO change to pederson/ whatever used in circom
-  return privateState.move ^ 69;
 }

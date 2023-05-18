@@ -9,23 +9,23 @@ include "./templates/utils.circom";
 // B is not using any pvt states so no need of hashing
 // B only updates its public states. a zk proof is not necessary
 template Main() { 
+    signal input hash_prev;  
     // previous pub states
-    signal input A_Health_prev;  
-    signal input B_Health_prev;
+    signal input Health_prev[2];  
     signal input B_move_prev;
     signal input step_prev;
-    //pvt 
 
     // current state
-    signal input A_Health;  
-    signal input B_Health;
-    signal input B_move; 
+    signal input Health[2];  
+    signal input B_move;
     signal input step;
-
+    //pvt 
+    signal output hash;
+ 
     /////// game logic
 
-    A_Health === A_Health_prev;
-    B_Health === B_Health_prev;
+    Health[0] === Health_prev[0];
+    Health[1] === Health_prev[1];
 
     // B_move == 0 || B_move == 1 || B_move == 2
     component contains = Contains3(0,1,2);
@@ -33,6 +33,7 @@ template Main() {
     contains.out === 1;
 
     step === step_prev + 1;
+    hash <== hash_prev; // B does not need pvt states
 }
 
-component main { public [A_Health_prev, B_Health_prev, B_move_prev, A_Health, B_Health, B_move] } = Main();
+component main { public [hash_prev, Health_prev, B_move_prev, step_prev, Health, B_move, step] } = Main();
