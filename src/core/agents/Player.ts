@@ -9,32 +9,31 @@ import { snarkjs } from "../snark";
 
 export default class Player implements IAgent<GameState> {
   private onMoveSelected: ((move: 0 | 1 | 2) => void) | undefined;
-  private privateState: PvtState = undefined;
+  private privateState: PvtState = { move: 3 };
   private pvtStateHash: PvtStateHash = 0;
-
-  constructor() {}
 
   public async getNextState(gameState: GameState): Promise<{
     newPubState: PubState;
     newPvtStateHash: PvtStateHash;
     proof: any;
-    publicSignals;
+    publicSignals: any;
   }> {
     return new Promise((resolve) => {
       this.onMoveSelected = async (move: 0 | 1 | 2) => {
         this.onMoveSelected = undefined;
 
         // extract PubState from gameState & deep copy
-        let pubState = { ...gameState };
+        let pubState = { ...gameState } as any;
         delete pubState.pvtStateHash;
         pubState = JSON.parse(JSON.stringify(pubState));
 
-        let agentId = gameState.step % 2;
+        const agentId = gameState.step % 2;
         // save a deep copy of the previous private state
         // needed for proof generation
-        let prevPvtState = this.privateState
-          ? JSON.parse(JSON.stringify(this.privateState))
-          : undefined;
+        const prevPvtState =
+          this.privateState.move !== 3
+            ? JSON.parse(JSON.stringify(this.privateState))
+            : undefined;
 
         //////////////////////////////////////////
         // GAME LOGIC
@@ -42,7 +41,7 @@ export default class Player implements IAgent<GameState> {
           // 0's turn
           if (gameState.step > 0) {
             // update healths
-            let diff = (3 + this.privateState.move - gameState.B_move) % 3;
+            const diff = (3 + this.privateState.move - gameState.B_move) % 3;
             if (diff === 1) {
               // 0 wins
               pubState.Health[1] -= 1;
@@ -70,7 +69,7 @@ export default class Player implements IAgent<GameState> {
         } else {
           zkCircuitName = agentId === 0 ? "moveA" : "moveB";
           // construct prevStates
-          let prevStates = {};
+          const prevStates = {};
           for (let key in pubState) {
             prevStates[key + "_prev"] = gameState[key];
           }
@@ -90,7 +89,7 @@ export default class Player implements IAgent<GameState> {
         try {
           console.log(`generating proof for ${zkCircuitName}`, { inputs });
           let time = performance.now();
-          let { proof, publicSignals } = await snarkjs.groth16.fullProve(
+          const { proof, publicSignals } = await snarkjs.groth16.fullProve(
             inputs,
             zkCircuitName + ".wasm",
             zkCircuitName + ".zkey"

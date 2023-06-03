@@ -2,8 +2,6 @@ import { START_HEALTH } from "../constants";
 import type { IGameLogic, GameState, PvtState } from "./types";
 
 export default class GameLogic implements IGameLogic<GameState> {
-  private playerPvtState: PvtState;
-
   getInitialState(): GameState {
     const state: GameState = {
       step: 0,

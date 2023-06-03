@@ -29,17 +29,14 @@ export default class NetworkedAgent implements IAgent<GameState> {
     publicSignals;
   }> {
     // extract PubState from gameState
-    let agentId = gameState.step % 2;
-    let pubState = { ...gameState };
+    const agentId = gameState.step % 2;
+    const pubState = { ...gameState };
     delete pubState.pvtStateHash;
-    // extract Opponent's PvtStateHash from gameState
-    let opponentPvtStateHash = gameState.pvtStateHash[agentId ? 0 : 1];
-
     // send the game state to the other player
     this.conn.send(
       JSON.stringify({
         pubState: pubState,
-        pvtStateHash: opponentPvtStateHash,
+        pvtStateHash: gameState.pvtStateHash[(agentId + 1) % 2],
         proof: prevProof,
         publicSignals: prevPublicSignals,
       })

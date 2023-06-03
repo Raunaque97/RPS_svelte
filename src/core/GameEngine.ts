@@ -26,10 +26,10 @@ class GameEngine {
       let state = get(this.gameState);
       let proof, publicSignals;
       while (!this.gameLogic.isFinalState(state)) {
-        console.log("%c current GameSate", "color: brown;", state);
-        let currStep = state.step;
-        let currAgentId = currStep % 2;
-        let currAgent = agents[currAgentId];
+        // console.log("%c current GameSate", "color: brown;", state);
+        const currStep = state.step;
+        const currAgentId = currStep % 2;
+        const currAgent = agents[currAgentId];
         /*************************************************/
         this.status = GameEngineStatus.WaitingForResponse;
         console.log("%c Waiting for response from agent", "color: brown;", {
@@ -50,7 +50,7 @@ class GameEngine {
           verification_key = currAgentId === 0 ? moveA_vk : moveB_vk;
         }
         let time = performance.now();
-        let verified = await snarkjs.groth16.verify(
+        const verified = await snarkjs.groth16.verify(
           verification_key,
           publicSignals,
           proof
