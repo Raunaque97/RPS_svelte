@@ -15,7 +15,8 @@ template Main() {
     signal input Health_prev[2];  
     signal input B_move_prev;
     signal input step_prev;
-    //pvt 
+    //pvt
+    signal input p0_salt_prev;
     signal input P0_move_prev;
 
     // current state
@@ -23,14 +24,17 @@ template Main() {
     signal input B_move;
     signal input step;
     //pvt 
+    signal input p0_salt;
     signal input P0_move;
+    // output
     signal output hash;
 
 
     // hash of private states should be equal to hash_prev
-    component hasher = MiMCSponge(1, 220, 1);
+    component hasher = MiMCSponge(2, 220, 1);
     hasher.k <== 0;
-    hasher.ins[0] <== P0_move_prev;
+    hasher.ins[0] <== p0_salt_prev;
+    hasher.ins[1] <== P0_move_prev;
     hash_prev === hasher.outs[0];
 
     /////// game logic
@@ -75,9 +79,10 @@ template Main() {
 
     step === step_prev + 1;
     // calculate next hash
-    component hasher1 = MiMCSponge(1, 220, 1);
+    component hasher1 = MiMCSponge(2, 220, 1);
     hasher1.k <== 0;
-    hasher1.ins[0] <== P0_move;
+    hasher1.ins[0] <== p0_salt;
+    hasher1.ins[1] <== P0_move;
 
     hash <== hasher1.outs[0];
 }

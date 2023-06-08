@@ -20,6 +20,7 @@ template Main() {
    signal input B_move;
    signal input step;
    // pvtStates
+   signal input p0_salt;
    signal input P0_move;
 
    signal output hash;
@@ -36,9 +37,10 @@ template Main() {
 
    step === 0; // initialize step to 0
    // calculate hash of private states
-   component hasher = MiMCSponge(1, 220, 1);
+   component hasher = MiMCSponge(2, 220, 1);
    hasher.k <== 0;
-   hasher.ins[0] <== P0_move;
+   hasher.ins[0] <== p0_salt;
+   hasher.ins[1] <== P0_move;
 
    hash <== hasher.outs[0];
 
